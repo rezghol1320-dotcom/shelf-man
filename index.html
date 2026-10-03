@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<link rel="manifest" href="manifest.webmanifest">
+<title>شلف من</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f5f7;color:#222;font-family:Tahoma,Arial,sans-serif}
+main{max-width:620px;margin:auto;padding:18px 14px 30px}h1{margin:4px 0;font-size:25px}.date{color:#777;font-size:13px;margin:4px 0 15px}
+.card{background:#fff;border-radius:18px;padding:15px;margin-bottom:14px;box-shadow:0 3px 14px #0001}.row{display:flex;gap:8px}
+input{min-width:0;flex:1;padding:14px;border:1px solid #ddd;border-radius:12px;font-size:16px;outline:none}button{border:0;border-radius:12px;padding:13px 15px;font-size:15px}
+.add{background:#111;color:#fff}.reset{background:#eee}.stats{display:flex;justify-content:space-between;color:#555;font-size:13px}
+.progress{height:10px;background:#e7e7e7;border-radius:20px;overflow:hidden;margin:10px 0 13px}.bar{height:100%;background:#20a464;width:0;transition:.2s}
+.item{display:flex;align-items:center;gap:12px;padding:13px 3px;border-bottom:1px solid #eee}.item:last-child{border:0}
+.check{width:28px;height:28px;border:2px solid #aaa;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:none;font-weight:bold;cursor:pointer}
+.done .check{background:#20a464;border-color:#20a464;color:#fff}.done .name{text-decoration:line-through;color:#999}.name{flex:1}
+.del{background:transparent;color:#aaa;font-size:22px;padding:2px 8px}.empty{text-align:center;color:#888;padding:25px 5px}
+</style>
+</head>
+<body><main>
+<h1>📋 شلف من</h1><div class="date" id="date"></div>
+<div class="card"><div class="row"><input id="new" placeholder="اسم کالا..." autocomplete="off"><button class="add" id="add">افزودن</button></div></div>
+<div class="card"><div class="stats"><span id="stats">۰ از ۰</span><span id="pct">۰٪</span></div>
+<div class="progress"><div class="bar" id="bar"></div></div><button class="reset" id="reset">🔄 تیک‌های امروز را پاک کن</button></div>
+<div class="card" id="list"></div>
+</main>
+<script>
+const IK='shelf_items',CK='shelf_checks';
+let items=JSON.parse(localStorage.getItem(IK)||'[]'), checks=JSON.parse(localStorage.getItem(CK)||'{}');
+const $=id=>document.getElementById(id), day=()=>{let d=new Date();return d.toISOString().slice(0,10)};
+const fa=n=>String(n).replace(/\d/g,x=>'۰۱۲۳۴۵۶۷۸۹'[x]);
+function save(){localStorage.setItem(IK,JSON.stringify(items));localStorage.setItem(CK,JSON.stringify(checks))}
+function render(){
+ $('date').textContent='امروز: '+new Date().toLocaleDateString('fa-IR');
+ let d=checks[day()]||[],done=items.filter(x=>d.includes(x.id)).length,p=items.length?Math.round(done/items.length*100):0;
+ $('stats').textContent=fa(done)+' از '+fa(items.length);$('pct').textContent=fa(p)+'٪';$('bar').style.width=p+'%';
+ if(!items.length){$('list').innerHTML='<div class="empty">هنوز کالایی اضافه نشده</div>';return}
+ $('list').innerHTML='';
+ items.forEach(x=>{
+  let row=document.createElement('div');row.className='item'+(d.includes(x.id)?' done':'');
+  let c=document.createElement('div');c.className='check';c.textContent=d.includes(x.id)?'✓':'';c.onclick=()=>toggle(x.id);
+  let n=document.createElement('div');n.className='name';n.textContent=x.name;
+  let del=document.createElement('button');del.className='del';del.textContent='×';del.onclick=()=>remove(x.id);
+  row.append(c,n,del);$('list').appendChild(row);
+ });
+}
+function add(){let v=$('new').value.trim();if(!v){$('new').focus();return}items.push({id:Date.now()+Math.random(),name:v});$('new').value='';save();render();$('new').focus()}
+function toggle(id){let d=checks[day()]||[],i=d.indexOf(id);i>=0?d.splice(i,1):d.push(id);checks[day()]=d;save();render()}
+function remove(id){if(confirm('این کالا حذف شود؟')){items=items.filter(x=>x.id!==id);save();render()}}
+$('add').onclick=add;$('new').onkeydown=e=>{if(e.key==='Enter')add()};$('reset').onclick=()=>{if(confirm('تیک‌های امروز پاک شوند؟')){checks[day()]=[];save();render()}};
+if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+render();
+</script></body></html>

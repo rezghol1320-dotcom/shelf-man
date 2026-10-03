@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>چک‌لیست شلف</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f5f7;font-family:Tahoma,Arial,sans-serif;color:#222}
+.app{max-width:620px;margin:auto;padding:18px}
+h1{margin:4px 0;font-size:25px}.date{color:#777;margin:4px 0 16px;font-size:13px}
+.card{background:#fff;border-radius:18px;padding:15px;margin-bottom:14px;box-shadow:0 3px 12px rgba(0,0,0,.08)}
+.row{display:flex;gap:8px}input{min-width:0;flex:1;padding:14px;border:1px solid #ddd;border-radius:12px;font-size:16px}
+button{border:0;border-radius:12px;padding:13px 16px;font-size:15px;touch-action:manipulation}
+.add{background:#222;color:#fff}.reset{background:#eee}.stats{display:flex;justify-content:space-between;color:#555;font-size:13px}
+.progress{height:10px;background:#e7e7e7;border-radius:10px;margin:10px 0 13px;overflow:hidden}.bar{height:100%;background:#20a464;width:0}
+.item{display:flex;align-items:center;gap:12px;padding:13px 4px;border-bottom:1px solid #eee}.item:last-child{border:0}
+.check{width:27px;height:27px;border:2px solid #aaa;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:none;font-weight:bold;cursor:pointer}
+.done .check{background:#20a464;border-color:#20a464;color:#fff}.done .name{text-decoration:line-through;color:#999}.name{flex:1}
+.del{background:transparent;color:#aaa;font-size:22px;padding:3px 8px}.empty{text-align:center;color:#888;padding:25px 5px}
+</style>
+</head>
+<body>
+<div class="app">
+<h1>📋 چک‌لیست شلف</h1>
+<div class="date" id="date"></div>
+
+<div class="card">
+<div class="row">
+<input id="newItem" type="text" placeholder="اسم کالا را بنویس..." autocomplete="off">
+<button id="addBtn" class="add" type="button">افزودن</button>
+</div>
+</div>
+
+<div class="card">
+<div class="stats"><span id="stats">۰ از ۰</span><span id="percent">۰٪</span></div>
+<div class="progress"><div class="bar" id="bar"></div></div>
+<button id="resetBtn" class="reset" type="button">🔄 پاک کردن تیک‌های امروز</button>
+</div>
+
+<div class="card" id="list"></div>
+</div>
+
+<script>
+(function(){
+"use strict";
+var ITEMS="shelf_items_v2", CHECKS="shelf_checks_v2";
+var items=[], checks={};
+
+function load(){
+ try{items=JSON.parse(localStorage.getItem(ITEMS)||"[]")}catch(e){items=[]}
+ try{checks=JSON.parse(localStorage.getItem(CHECKS)||"{}")}catch(e){checks={}}
+}
+function save(){try{localStorage.setItem(ITEMS,JSON.stringify(items));localStorage.setItem(CHECKS,JSON.stringify(checks));}catch(e){}}
+function dayKey(){var d=new Date();return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate()}
+function fa(n){return String(n).replace(/\d/g,function(x){return "۰۱۲۳۴۵۶۷۸۹"[x]})}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function render(){
+ document.getElementById("date").textContent="امروز: "+new Date().toLocaleDateString("fa-IR");
+ var d=checks[dayKey()]||[],done=0;
+ items.forEach(function(x){if(d.indexOf(x.id)>=0)done++});
+ var pct=items.length?Math.round(done/items.length*100):0;
+ document.getElementById("stats").textContent=fa(done)+" از "+fa(items.length)+" کالا";
+ document.getElementById("percent").textContent=fa(pct)+"٪";
+ document.getElementById("bar").style.width=pct+"%";
+ var box=document.getElementById("list");
+ if(!items.length){box.innerHTML='<div class="empty">هنوز کالایی اضافه نکردی.<br>اسم کالا را بالا بنویس.</div>';return}
+ box.innerHTML="";
+ items.forEach(function(x){
+  var doneNow=d.indexOf(x.id)>=0, row=document.createElement("div");
+  row.className="item"+(doneNow?" done":"");
+  var ck=document.createElement("div");ck.className="check";ck.textContent=doneNow?"✓":"";
+  ck.addEventListener("click",function(){toggle(x.id)});
+  var name=document.createElement("div");name.className="name";name.textContent=x.name;
+  var del=document.createElement("button");del.className="del";del.type="button";del.textContent="×";
+  del.addEventListener("click",function(){removeItem(x.id)});
+  row.appendChild(ck);row.appendChild(name);row.appendChild(del);box.appendChild(row);
+ });
+}
+function addItem(){
+ var input=document.getElementById("newItem"),name=input.value.trim();
+ if(!name){input.focus();return}
+ items.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2),name:name});
+ input.value="";save();render();input.focus();
+}
+function toggle(id){
+ var d=checks[dayKey()]||[],i=d.indexOf(id);
+ if(i>=0)d.splice(i,1);else d.push(id);
+ checks[dayKey()]=d;save();render();
+}
+function removeItem(id){
+ if(!window.confirm("این کالا حذف شود؟"))return;
+ items=items.filter(function(x){return x.id!==id});
+ Object.keys(checks).forEach(function(k){checks[k]=(checks[k]||[]).filter(function(x){return x!==id})});
+ save();render();
+}
+function resetToday(){
+ if(window.confirm("تیک‌های امروز پاک شوند؟")){checks[dayKey()]=[];save();render()}
+}
+load();render();
+document.getElementById("addBtn").addEventListener("click",addItem);
+document.getElementById("resetBtn").addEventListener("click",resetToday);
+document.getElementById("newItem").addEventListener("keydown",function(e){if(e.key==="Enter"||e.keyCode===13){e.preventDefault();addItem()}});
+})();
+</script>
+</body>
+</html>
