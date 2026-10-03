@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>چک‌لیست شلف</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Tahoma,Arial,sans-serif;background:#f4f6f8;color:#222}
+.app{max-width:600px;margin:auto;padding:18px}
+h1{margin:8px 0 4px;font-size:25px}
+.date{color:#666;font-size:13px;margin-bottom:16px}
+.card{background:#fff;border-radius:18px;padding:15px;margin-bottom:14px;box-shadow:0 3px 12px #00000010}
+.row{display:flex;gap:8px}
+input{flex:1;border:1px solid #ddd;border-radius:12px;padding:13px;font-size:15px;outline:none}
+button{border:0;border-radius:12px;padding:12px 15px;font-size:14px;cursor:pointer}
+.add{background:#222;color:#fff}
+.reset{background:#eee}
+.progress{height:10px;background:#e7e7e7;border-radius:20px;overflow:hidden;margin:10px 0}
+.bar{height:100%;background:#20a464;width:0%;transition:.2s}
+.stats{display:flex;justify-content:space-between;font-size:13px;color:#555}
+.item{display:flex;align-items:center;gap:12px;padding:13px 5px;border-bottom:1px solid #eee}
+.item:last-child{border-bottom:0}
+.check{width:25px;height:25px;border:2px solid #bbb;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
+.item.done .check{background:#20a464;border-color:#20a464;color:#fff}
+.item.done .name{text-decoration:line-through;color:#999}
+.name{flex:1;font-size:15px}
+.del{background:transparent;color:#aaa;padding:5px;font-size:18px}
+.empty{text-align:center;color:#888;padding:25px 5px}
+.small{font-size:12px;color:#777;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>📋 چک‌لیست شلف</h1>
+  <div class="date" id="date"></div>
+
+  <div class="card">
+    <div class="row">
+      <input id="newItem" placeholder="اسم کالا را وارد کن..." autocomplete="off">
+      <button class="add" onclick="addItem()">+ افزودن</button>
+    </div>
+    <div class="small">لیست کالاها روی همین گوشی ذخیره می‌شود.</div>
+  </div>
+
+  <div class="card">
+    <div class="stats"><span id="stats">۰ از ۰</span><span id="percent">۰٪</span></div>
+    <div class="progress"><div class="bar" id="bar"></div></div>
+    <button class="reset" onclick="resetToday()">🔄 شروع دوباره امروز</button>
+  </div>
+
+  <div class="card" id="list"></div>
+</div>
+
+<script>
+const KEY='shelf_items_v1';
+const CHECK='shelf_checks_v1';
+let items=JSON.parse(localStorage.getItem(KEY)||'[]');
+let checks=JSON.parse(localStorage.getItem(CHECK)||'{}');
+
+function todayKey(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function fa(n){return String(n).replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d]);}
+function save(){localStorage.setItem(KEY,JSON.stringify(items));localStorage.setItem(CHECK,JSON.stringify(checks));}
+function render(){
+  document.getElementById('date').textContent='امروز: '+new Date().toLocaleDateString('fa-IR');
+  const day=checks[todayKey()]||[];
+  const done=items.filter(x=>day.includes(x.id)).length;
+  const pct=items.length?Math.round(done/items.length*100):0;
+  document.getElementById('stats').textContent=fa(done)+' از '+fa(items.length)+' کالا';
+  document.getElementById('percent').textContent=fa(pct)+'٪';
+  document.getElementById('bar').style.width=pct+'%';
+  const box=document.getElementById('list');
+  if(!items.length){box.innerHTML='<div class="empty">هنوز کالایی اضافه نکردی.<br>اسم کالاها را بالا وارد کن.</div>';return;}
+  box.innerHTML=items.map(x=>{
+    const isDone=day.includes(x.id);
+    return `<div class="item ${isDone?'done':''}">
+      <div class="check" onclick="toggle('${x.id}')">${isDone?'✓':''}</div>
+      <div class="name">${esc(x.name)}</div>
+      <button class="del" onclick="removeItem('${x.id}')" title="حذف">×</button>
+    </div>`;
+  }).join('');
+}
+function esc(s){return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));}
+function addItem(){
+  const input=document.getElementById('newItem');
+  const name=input.value.trim();
+  if(!name)return;
+  items.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2),name});
+  input.value='';save();render();input.focus();
+}
+function toggle(id){
+  const day=checks[todayKey()]||[];
+  const i=day.indexOf(id);
+  if(i>=0)day.splice(i,1); else day.push(id);
+  checks[todayKey()]=day;save();render();
+}
+function removeItem(id){
+  if(!confirm('این کالا از لیست حذف شود؟'))return;
+  items=items.filter(x=>x.id!==id);
+  Object.keys(checks).forEach(k=>checks[k]=checks[k].filter(x=>x!==id));
+  save();render();
+}
+function resetToday(){
+  if(confirm('تیک‌های امروز پاک شوند؟')){checks[todayKey()]=[];save();render();}
+}
+document.getElementById('newItem').addEventListener('keydown',e=>{if(e.key==='Enter')addItem();});
+render();
+</script>
+</body>
+</html>
