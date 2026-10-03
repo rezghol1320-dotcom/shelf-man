@@ -1,55 +1,16 @@
-<!doctype html>
-<html lang="fa" dir="rtl">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#111111">
-<link rel="manifest" href="manifest.webmanifest">
-<title>شلف من</title>
-<style>
-*{box-sizing:border-box}body{margin:0;background:#f3f5f7;color:#222;font-family:Tahoma,Arial,sans-serif}
-main{max-width:620px;margin:auto;padding:18px 14px 30px}h1{margin:4px 0;font-size:25px}.date{color:#777;font-size:13px;margin:4px 0 15px}
-.card{background:#fff;border-radius:18px;padding:15px;margin-bottom:14px;box-shadow:0 3px 14px #0001}.row{display:flex;gap:8px}
-input{min-width:0;flex:1;padding:14px;border:1px solid #ddd;border-radius:12px;font-size:16px;outline:none}button{border:0;border-radius:12px;padding:13px 15px;font-size:15px}
-.add{background:#111;color:#fff}.reset{background:#eee}.stats{display:flex;justify-content:space-between;color:#555;font-size:13px}
-.progress{height:10px;background:#e7e7e7;border-radius:20px;overflow:hidden;margin:10px 0 13px}.bar{height:100%;background:#20a464;width:0;transition:.2s}
-.item{display:flex;align-items:center;gap:12px;padding:13px 3px;border-bottom:1px solid #eee}.item:last-child{border:0}
-.check{width:28px;height:28px;border:2px solid #aaa;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:none;font-weight:bold;cursor:pointer}
-.done .check{background:#20a464;border-color:#20a464;color:#fff}.done .name{text-decoration:line-through;color:#999}.name{flex:1}
-.del{background:transparent;color:#aaa;font-size:22px;padding:2px 8px}.empty{text-align:center;color:#888;padding:25px 5px}
-</style>
-</head>
-<body><main>
-<h1>📋 شلف من</h1><div class="date" id="date"></div>
-<div class="card"><div class="row"><input id="new" placeholder="اسم کالا..." autocomplete="off"><button class="add" id="add">افزودن</button></div></div>
-<div class="card"><div class="stats"><span id="stats">۰ از ۰</span><span id="pct">۰٪</span></div>
-<div class="progress"><div class="bar" id="bar"></div></div><button class="reset" id="reset">🔄 تیک‌های امروز را پاک کن</button></div>
-<div class="card" id="list"></div>
-</main>
-<script>
-const IK='shelf_items',CK='shelf_checks';
-let items=JSON.parse(localStorage.getItem(IK)||'[]'), checks=JSON.parse(localStorage.getItem(CK)||'{}');
-const $=id=>document.getElementById(id), day=()=>{let d=new Date();return d.toISOString().slice(0,10)};
-const fa=n=>String(n).replace(/\d/g,x=>'۰۱۲۳۴۵۶۷۸۹'[x]);
-function save(){localStorage.setItem(IK,JSON.stringify(items));localStorage.setItem(CK,JSON.stringify(checks))}
-function render(){
- $('date').textContent='امروز: '+new Date().toLocaleDateString('fa-IR');
- let d=checks[day()]||[],done=items.filter(x=>d.includes(x.id)).length,p=items.length?Math.round(done/items.length*100):0;
- $('stats').textContent=fa(done)+' از '+fa(items.length);$('pct').textContent=fa(p)+'٪';$('bar').style.width=p+'%';
- if(!items.length){$('list').innerHTML='<div class="empty">هنوز کالایی اضافه نشده</div>';return}
- $('list').innerHTML='';
- items.forEach(x=>{
-  let row=document.createElement('div');row.className='item'+(d.includes(x.id)?' done':'');
-  let c=document.createElement('div');c.className='check';c.textContent=d.includes(x.id)?'✓':'';c.onclick=()=>toggle(x.id);
-  let n=document.createElement('div');n.className='name';n.textContent=x.name;
-  let del=document.createElement('button');del.className='del';del.textContent='×';del.onclick=()=>remove(x.id);
-  row.append(c,n,del);$('list').appendChild(row);
- });
-}
-function add(){let v=$('new').value.trim();if(!v){$('new').focus();return}items.push({id:Date.now()+Math.random(),name:v});$('new').value='';save();render();$('new').focus()}
-function toggle(id){let d=checks[day()]||[],i=d.indexOf(id);i>=0?d.splice(i,1):d.push(id);checks[day()]=d;save();render()}
-function remove(id){if(confirm('این کالا حذف شود؟')){items=items.filter(x=>x.id!==id);save();render()}}
-$('add').onclick=add;$('new').onkeydown=e=>{if(e.key==='Enter')add()};$('reset').onclick=()=>{if(confirm('تیک‌های امروز پاک شوند؟')){checks[day()]=[];save();render()}};
-if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
-render();
+<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#111827"><link rel="manifest" href="manifest.webmanifest"><title>شلف من پیشرفته</title><style>
+*{box-sizing:border-box}body{margin:0;background:#f3f4f6;color:#111827;font-family:Arial,sans-serif;padding:14px}h1{text-align:center;margin:8px}.card{background:#fff;border-radius:16px;padding:14px;margin:10px 0;box-shadow:0 2px 10px #0001}button,input,select{font:inherit;border-radius:10px;padding:11px;margin:3px;border:1px solid #ddd}button{background:#111827;color:#fff;border:0}.primary{width:100%;font-size:18px;background:#2563eb}.danger{background:#b91c1c}.tabs{display:flex;gap:5px;overflow:auto}.tabs button{white-space:nowrap}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;text-align:center}.stat{background:#eef2ff;border-radius:12px;padding:10px}.cat{font-size:18px;font-weight:bold;margin:14px 0 5px}.item{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #eee}.item input{width:23px;height:23px}.small{font-size:12px;color:#6b7280}.hidden{display:none}#reader{margin-top:10px}.bar{height:9px;background:#e5e7eb;border-radius:10px;overflow:hidden}.fill{height:100%;background:#2563eb;width:0}.search{width:100%}
+</style></head><body><h1>📦 شلف من</h1>
+<div class="card"><div class="stats"><div class="stat"><b id="done">0</b><div>انجام شده</div></div><div class="stat"><b id="total">0</b><div>کل کالا</div></div><div class="stat"><b id="percent">0%</b><div>پیشرفت</div></div></div><div class="bar"><div id="fill" class="fill"></div></div></div>
+<div class="card"><button class="primary" onclick="scan()">📷 اسکن بارکد</button><div id="reader" class="hidden"></div></div>
+<div class="card"><input id="name" placeholder="نام کالا"><select id="cat"><option>چیپس</option><option>پفک و اسنک</option><option>پاپ‌کورن و تنقلات</option><option>کلوچه و بیسکویت</option><option>کیک</option></select><input id="code" placeholder="بارکد"><button onclick="add()">➕ افزودن کالا</button></div>
+<div class="card"><input id="search" class="search" placeholder="🔎 جستجوی نام یا بارکد" oninput="render()"><div class="tabs"><button onclick="filter='all';render()">همه</button><button onclick="filter='unchecked';render()">⬜ بررسی‌نشده</button><button onclick="filter='checked';render()">✅ انجام‌شده</button></div><div id="list"></div><button onclick="resetToday()">پاک کردن تیک‌های امروز</button></div>
+<script src="https://unpkg.com/html5-qrcode" defer></script><script>
+const KEY='shelfAdvancedV1',DAY=()=>new Date().toISOString().slice(0,10);let filter='all',items=JSON.parse(localStorage.getItem(KEY)||'[]');
+function save(){localStorage.setItem(KEY,JSON.stringify(items));render()}function add(n,cat,code){n=n??nameEl().value.trim();cat=cat??document.getElementById('cat').value;code=code??document.getElementById('code').value.trim();if(!n)return alert('نام کالا را وارد کن');if(code&&items.some(x=>x.code===code))return alert('این بارکد قبلاً ثبت شده');items.push({id:Date.now(),name:n,cat,code,checked:false,date:''});document.getElementById('name').value='';document.getElementById('code').value='';save()}function nameEl(){return document.getElementById('name')}
+function toggle(id){let x=items.find(a=>a.id===id);if(x){x.checked=!x.checked;x.date=x.checked?DAY():'';save()}}function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function render(){let q=document.getElementById('search').value.trim().toLowerCase(),root=document.getElementById('list');root.innerHTML='';let visible=items.filter(x=>(!q||x.name.toLowerCase().includes(q)||x.code.includes(q))&&(filter==='all'||(filter==='checked'?x.checked&&x.date===DAY():!x.checked||x.date!==DAY())));let cats=['چیپس','پفک و اسنک','پاپ‌کورن و تنقلات','کلوچه و بیسکویت','کیک'];cats.forEach(c=>{let a=visible.filter(x=>x.cat===c);if(!a.length)return;let h=document.createElement('div');h.className='cat';h.textContent=c;root.appendChild(h);a.forEach(x=>{let d=document.createElement('div');d.className='item';d.innerHTML='<input type="checkbox" '+(x.checked&&x.date===DAY()?'checked':'')+' onchange="toggle('+x.id+')"><div><b>'+esc(x.name)+'</b><div class="small">'+(x.code?'بارکد: '+esc(x.code):'')+'</div></div>';root.appendChild(d)})});let done=items.filter(x=>x.checked&&x.date===DAY()).length,total=items.length,p=total?Math.round(done/total*100):0;document.getElementById('done').textContent=done;document.getElementById('total').textContent=total;document.getElementById('percent').textContent=p+'%';document.getElementById('fill').style.width=p+'%'}
+function resetToday(){items.forEach(x=>{x.checked=false;x.date=''});save()}
+async function scan(){let el=document.getElementById('reader');el.classList.remove('hidden');if(!window.Html5Qrcode)return alert('چند ثانیه صبر کن و دوباره بزن');let qr=new Html5Qrcode('reader');try{await qr.start({facingMode:'environment'},{fps:10,qrbox:{width:280,height:160}},code=>{let x=items.find(a=>a.code===code);if(x){x.checked=true;x.date=DAY();save();alert('کالا پیدا شد و تیک خورد: '+x.name)}else{let n=prompt('بارکد جدید است. نام کالا را وارد کن:');if(n)add(n,document.getElementById('cat').value,code)}qr.stop().then(()=>el.classList.add('hidden')).catch(()=>{})})}catch(e){el.classList.add('hidden');alert('اجازه دوربین را بده و دوباره امتحان کن')}}
+if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});render();
 </script></body></html>
