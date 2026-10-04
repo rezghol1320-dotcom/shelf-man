@@ -1,6 +1,217 @@
-<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#111827"><link rel="manifest" href="manifest.webmanifest"><title>شلف من</title><style>body{font-family:Arial,sans-serif;background:#f3f4f6;margin:0;padding:16px;color:#111827}h1{text-align:center}.box{background:#fff;border-radius:16px;padding:14px;margin:12px 0;box-shadow:0 2px 10px #0001}input,select,button{font:inherit;padding:11px;border-radius:10px;border:1px solid #ddd;margin:4px}button{background:#111827;color:#fff;border:0}.scan{width:100%;font-size:18px;background:#2563eb}.item{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #eee}.stock{display:flex;align-items:center;gap:4px;margin-top:7px}.stock button{padding:5px 9px;margin:0;background:#374151;font-weight:bold}.stockNum{min-width:42px;text-align:center;font-weight:bold;background:#f3f4f6;padding:5px 7px;border-radius:8px}.stockLabel{font-size:12px;color:#6b7280;margin-left:3px}.photo{width:58px;height:58px;border-radius:10px;object-fit:cover;border:1px solid #ddd;cursor:pointer}.photoPlaceholder{width:58px;height:58px;border-radius:10px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:24px}.item input{width:22px;height:22px}.actions button{background:#b91c1c;font-size:13px}.cat{font-size:18px;font-weight:bold;margin:15px 0 6px}.small{font-size:12px;color:#6b7280}.hidden{display:none}.stats{text-align:center;font-weight:bold}#reader{margin-top:10px}</style></head><body><h1>📦 شلف من</h1><div class="box stats" id="stats"></div><div class="box"><button class="scan" onclick="scan()">📷 اسکن بارکد</button><div id="reader" class="hidden"></div></div><div class="box"><input id="name" placeholder="نام کالا"><select id="cat"><option>چیپس</option><option>پفک و اسنک</option><option>پاپ‌کورن و تنقلات</option><option>کلوچه و بیسکویت</option><option>کیک</option></select><input id="code" placeholder="بارکد (اختیاری)"><input id="stock" type="number" min="0" inputmode="numeric" placeholder="موجودی اولیه"><label style="display:inline-block;background:#111827;color:#fff;padding:11px;border-radius:10px;cursor:pointer">📷 عکس کالا<input id="photo" type="file" accept="image/*" style="display:none" onchange="previewPhoto()"></label><span id="photoName" class="small"></span><button onclick="add()">➕ افزودن</button><div id="photoPreview"></div></div><div class="box"><input id="search" placeholder="🔎 جستجوی کالا یا بارکد" oninput="render()"><button onclick="togglePending()" id="pendingBtn">فقط بررسی‌نشده‌ها</button><button onclick="resetToday()">پاک کردن تیک‌های امروز</button></div><div class="box"><div id="list"></div></div><script src="https://unpkg.com/html5-qrcode" defer></script><script>
-const KEY='shelfItemsFixed2';let items=JSON.parse(localStorage.getItem(KEY)||'null');if(!Array.isArray(items)){items=JSON.parse(localStorage.getItem('shelfItemsFixed1')||'[]').map(x=>({...x,stock:Number.isFinite(Number(x.stock))?Number(x.stock):0}));localStorage.setItem(KEY,JSON.stringify(items))}else{items=items.map(x=>({...x,stock:Number.isFinite(Number(x.stock))?Number(x.stock):0}));}let pendingOnly=false;let selectedPhoto='';const cats=['چیپس','پفک و اسنک','پاپ‌کورن و تنقلات','کلوچه و بیسکویت','کیک'];const today=()=>new Date().toISOString().slice(0,10);function save(){localStorage.setItem(KEY,JSON.stringify(items));render()}
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#111827">
+<link rel="manifest" href="manifest.webmanifest">
+<title>شلف من</title>
+<style>
+*{box-sizing:border-box}body{font-family:Arial,sans-serif;background:#f3f4f6;margin:0;padding:14px;color:#111827}
+h1{text-align:center;margin:8px}.box{background:#fff;border-radius:16px;padding:14px;margin:10px 0;box-shadow:0 2px 10px #0001}
+input,select,button{font:inherit;padding:10px;border-radius:10px;border:1px solid #ddd;margin:3px}
+button{background:#111827;color:#fff;border:0;cursor:pointer}.primary{width:100%;font-size:18px;background:#2563eb}
+.green{background:#059669}.blue{background:#2563eb}.danger{background:#b91c1c}.muted{background:#6b7280}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}.grid>*{width:100%}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center}.stat{background:#eef2ff;border-radius:12px;padding:9px;font-size:12px}.stat b{font-size:18px}
+.item{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #eee}.item input{width:22px;height:22px}
+.photo{width:58px;height:58px;border-radius:10px;object-fit:cover;border:1px solid #ddd;cursor:pointer}
+.photoPlaceholder{width:58px;height:58px;border-radius:10px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:24px}
+.small{font-size:12px;color:#6b7280}.cat{font-size:18px;font-weight:bold;margin:15px 0 6px}
+.stock{display:flex;align-items:center;gap:4px;margin-top:6px}.stock button{padding:4px 9px;margin:0;background:#374151}
+.stockNum{min-width:42px;text-align:center;font-weight:bold;background:#f3f4f6;padding:5px;border-radius:8px}
+.hidden{display:none}.bar{height:9px;background:#e5e7eb;border-radius:10px;overflow:hidden;margin-top:8px}.fill{height:100%;background:#2563eb;width:0}
+.search{width:100%}.tabs{display:flex;gap:5px;overflow:auto}.tabs button{white-space:nowrap}
+.status{padding:8px;border-radius:10px;background:#f3f4f6;font-size:12px;margin-top:7px}
+.actions{display:flex;flex-wrap:wrap;gap:3px}.actions button{font-size:12px}
+label.file{display:inline-block;background:#111827;color:#fff;padding:10px;border-radius:10px;cursor:pointer}
+</style>
+</head>
+<body>
+<h1>📦 شلف من</h1>
+
+<div class="box">
+  <div class="stats">
+    <div class="stat"><b id="total">0</b><div>کل کالا</div></div>
+    <div class="stat"><b id="done">0</b><div>بررسی‌شده</div></div>
+    <div class="stat"><b id="low">0</b><div>موجودی کم</div></div>
+    <div class="stat"><b id="percent">0%</b><div>پیشرفت</div></div>
+  </div>
+  <div class="bar"><div id="fill" class="fill"></div></div>
+  <div id="syncStatus" class="status">در حال آماده‌سازی...</div>
+</div>
+
+<div class="box">
+  <button class="primary" onclick="scan()">📷 اسکن بارکد</button>
+  <div id="reader" class="hidden"></div>
+</div>
+
+<div class="box">
+  <b>➕ افزودن کالا</b>
+  <div class="grid">
+    <input id="name" placeholder="نام کالا">
+    <input id="brand" placeholder="برند">
+    <select id="cat"></select>
+    <input id="code" placeholder="بارکد">
+    <input id="price" type="number" min="0" placeholder="قیمت">
+    <input id="stock" type="number" min="0" placeholder="موجودی اولیه">
+  </div>
+  <label class="file">📷 عکس کالا<input id="photo" type="file" accept="image/*" style="display:none" onchange="previewPhoto()"></label>
+  <span id="photoName" class="small"></span>
+  <div id="photoPreview"></div>
+  <button class="green" onclick="add()">افزودن</button>
+</div>
+
+<div class="box">
+  <b>🔄 ورود و همگام‌سازی کالاها</b>
+  <p class="small">فایل products.json کنار سایت قرار بگیرد، با «همگام‌سازی» کالاهای جدید خودکار وارد می‌شوند. CSV یا JSON هم می‌توانی وارد کنی.</p>
+  <button class="blue" onclick="syncCatalog()">🔄 همگام‌سازی کاتالوگ</button>
+  <label class="file">📥 ورود CSV/JSON<input id="importFile" type="file" accept=".csv,.json,application/json,text/csv" style="display:none" onchange="importFile()"></label>
+  <button class="muted" onclick="exportCSV()">📤 خروجی CSV</button>
+</div>
+
+<div class="box">
+  <input id="search" class="search" placeholder="🔎 جستجوی نام، برند یا بارکد" oninput="render()">
+  <div class="tabs">
+    <button onclick="filter='all';render()">همه</button>
+    <button onclick="filter='unchecked';render()">⬜ بررسی‌نشده</button>
+    <button onclick="filter='checked';render()">✅ انجام‌شده</button>
+    <button onclick="filter='low';render()">⚠️ موجودی کم</button>
+  </div>
+</div>
+
+<div class="box"><div id="list"></div></div>
+
+<script src="https://unpkg.com/html5-qrcode" defer></script>
+<script>
+const KEY='shelfItemsAutoV3';
+const cats=['مواد غذایی','لبنیات','نوشیدنی','تنقلات','چیپس','پفک و اسنک','بیسکویت و کلوچه','کیک و شیرینی','کنسرو و غذای آماده','روغن و چاشنی','خشکبار','صبحانه','شوینده','بهداشت شخصی','کودک و نوزاد','خانه و سبک زندگی','سایر'];
+const today=()=>new Date().toISOString().slice(0,10);
+let items=JSON.parse(localStorage.getItem(KEY)||'[]');
+let filter='all', selectedPhoto='';
+
+const catEl=document.getElementById('cat');
+cats.forEach(c=>{let o=document.createElement('option');o.textContent=c;o.value=c;catEl.appendChild(o)});
+
+function normalize(x){
+  return {
+    id:x.id||Date.now()+Math.random(),
+    name:String(x.name||x.title||x['نام کالا']||'').trim(),
+    brand:String(x.brand||x['برند']||'').trim(),
+    cat:String(x.cat||x.category||x['دسته‌بندی']||'سایر').trim()||'سایر',
+    code:String(x.code||x.barcode||x['بارکد']||'').trim(),
+    price:Number(x.price||x['قیمت']||0)||0,
+    stock:Number(x.stock||x['موجودی']||0)||0,
+    photo:x.photo||x.image||x.imageUrl||x['عکس']||'',
+    source:x.source||'catalog',
+    checked:!!x.checked,
+    date:x.date||''
+  };
+}
+items=items.map(normalize).filter(x=>x.name);
+function save(){localStorage.setItem(KEY,JSON.stringify(items));render()}
+function keyOf(x){return x.code?('code:'+x.code):('name:'+x.name+'|brand:'+x.brand)}
+function mergeProducts(products){
+  let added=0,updated=0;
+  products.map(normalize).filter(x=>x.name).forEach(p=>{
+    let idx=p.code?items.findIndex(x=>x.code===p.code):-1;
+    if(idx<0){items.push({...p,id:Date.now()+Math.random(),checked:false,date:''});added++}
+    else{
+      let old=items[idx];
+      items[idx]={...old,name:p.name||old.name,brand:p.brand||old.brand,cat:p.cat||old.cat,
+        code:old.code||p.code,price:p.price||old.price,photo:p.photo||old.photo,source:p.source||old.source};
+      updated++;
+    }
+  });
+  save(); return {added,updated};
+}
+async function syncCatalog(){
+  const s=document.getElementById('syncStatus');
+  s.textContent='در حال دریافت products.json ...';
+  try{
+    const r=await fetch('./products.json?ts='+Date.now(),{cache:'no-store'});
+    if(!r.ok)throw new Error('products.json پیدا نشد');
+    const data=await r.json();
+    const products=Array.isArray(data)?data:(data.products||[]);
+    const res=mergeProducts(products);
+    s.textContent=`همگام شد: ${res.added} کالای جدید، ${res.updated} کالا به‌روزرسانی شد`;
+  }catch(e){
+    s.textContent='کاتالوگ آنلاین هنوز قرار نگرفته؛ از CSV/JSON استفاده کن یا products.json را کنار سایت بگذار.';
+  }
+}
 function compressImage(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{const max=700;let w=img.width,h=img.height;if(w>max||h>max){if(w>h){h=Math.round(h*max/w);w=max}else{w=Math.round(w*max/h);h=max}}const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);resolve(c.toDataURL('image/jpeg',.78))};img.onerror=reject;img.src=r.result};r.onerror=reject;r.readAsDataURL(file)})}
-async function previewPhoto(){const f=document.getElementById('photo').files[0];if(!f)return;selectedPhoto=await compressImage(f);document.getElementById('photoName').textContent='عکس انتخاب شد';document.getElementById('photoPreview').innerHTML='<img class="photo" src="'+selectedPhoto+'" alt="پیش‌نمایش">'}function add(n,cat,code,stock){n=n??nameEl.value.trim();cat=cat??catEl.value;code=code??codeEl.value.trim();stock=stock??Math.max(0,parseInt(document.getElementById('stock').value||'0',10));if(!n)return alert('نام کالا را وارد کن');if(code&&items.some(x=>x.code===code))return alert('این بارکد قبلاً ثبت شده');items.push({id:Date.now()+Math.random(),name:n,cat,code,photo:selectedPhoto,stock,checked:false,date:''});nameEl.value='';codeEl.value='';document.getElementById('stock').value='';document.getElementById('photo').value='';document.getElementById('photoName').textContent='';document.getElementById('photoPreview').innerHTML='';selectedPhoto='';save()}const nameEl=document.getElementById('name'),catEl=document.getElementById('cat'),codeEl=document.getElementById('code');function changeStock(id,delta){let x=items.find(a=>a.id==id);if(!x)return;x.stock=Math.max(0,(Number(x.stock)||0)+delta);save()}
-function toggle(id){let x=items.find(a=>a.id==id);if(x){x.checked=!x.checked;x.date=x.checked?today():'';save()}}function removeItem(id){if(!confirm('این کالا حذف شود؟'))return;items=items.filter(x=>x.id!=id);save()}function render(){let q=document.getElementById('search').value.trim().toLowerCase(),root=document.getElementById('list');root.innerHTML='';let visible=items.filter(x=>(!pendingOnly||!(x.checked&&x.date===today()))&&(!q||x.name.toLowerCase().includes(q)||x.code.toLowerCase().includes(q)));let done=items.filter(x=>x.checked&&x.date===today()).length;document.getElementById('stats').textContent=`امروز ${done} از ${items.length} کالا بررسی شده — ${items.length?Math.round(done/items.length*100):0}%`;cats.forEach(cat=>{let a=visible.filter(x=>x.cat===cat);if(!a.length)return;let h=document.createElement('div');h.className='cat';h.textContent=cat;root.appendChild(h);a.forEach(x=>{let d=document.createElement('div');d.className='item';d.innerHTML=`<input type="checkbox" ${x.checked&&x.date===today()?'checked':''} onchange="toggle('${x.id}')">${x.photo?`<img class="photo" src="${x.photo}" alt="${esc(x.name)}" onclick="viewPhoto('${x.id}')">`:`<div class="photoPlaceholder">📦</div>`}<div style="flex:1"><b>${esc(x.name)}</b><div class="small">${x.code?'بارکد: '+esc(x.code):''}</div><div class="stock"><span class="stockLabel">موجودی</span><button onclick="changeStock('${x.id}',-1)">−</button><span class="stockNum">${Number(x.stock)||0}</span><button onclick="changeStock('${x.id}',1)">+</button></div></div><div class="actions"><button onclick="removeItem('${x.id}')">🗑️ حذف</button></div>`;root.appendChild(d)})})}function viewPhoto(id){const x=items.find(a=>a.id==id);if(x&&x.photo){const w=window.open();if(w){w.document.write('<title>'+esc(x.name)+'</title><img src=\"'+x.photo+'\" style=\"max-width:100%;height:auto\">')}}}
-function togglePending(){pendingOnly=!pendingOnly;document.getElementById('pendingBtn').textContent=pendingOnly?'نمایش همه کالاها':'فقط بررسی‌نشده‌ها';render()}function resetToday(){items.forEach(x=>{x.checked=false;x.date=''});save()}function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}async function scan(){let el=document.getElementById('reader');el.classList.remove('hidden');if(!window.Html5Qrcode)return alert('چند ثانیه صبر کن و دوباره اسکن را بزن');let qr=new Html5Qrcode('reader');try{await qr.start({facingMode:'environment'},{fps:10,qrbox:{width:280,height:160}},code=>{let f=items.find(x=>x.code===code);if(f){f.checked=true;f.date=today();save();alert('کالا پیدا شد و تیک خورد: '+f.name)}else{let n=prompt('بارکد جدید است. نام کالا را وارد کن:');if(n)add(n,catEl.value,code)}qr.stop().then(()=>el.classList.add('hidden')).catch(()=>{})})}catch(e){el.classList.add('hidden');alert('اجازه دوربین را بده و دوباره امتحان کن')}}if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});render();</script></body></html>
+async function previewPhoto(){const f=document.getElementById('photo').files[0];if(!f)return;selectedPhoto=await compressImage(f);document.getElementById('photoName').textContent='عکس انتخاب شد';document.getElementById('photoPreview').innerHTML='<img class="photo" src="'+selectedPhoto+'">'}
+function add(n,cat,code){
+ n=n??document.getElementById('name').value.trim();cat=cat??catEl.value;code=code??document.getElementById('code').value.trim();
+ const brand=document.getElementById('brand').value.trim(),price=Number(document.getElementById('price').value||0),stock=Math.max(0,parseInt(document.getElementById('stock').value||'0',10));
+ if(!n)return alert('نام کالا را وارد کن');
+ if(code&&items.some(x=>x.code===code))return alert('این بارکد قبلاً ثبت شده');
+ items.push(normalize({name:n,brand,cat,code,price,stock,photo:selectedPhoto,source:'manual'}));
+ document.getElementById('name').value='';document.getElementById('brand').value='';document.getElementById('code').value='';
+ document.getElementById('price').value='';document.getElementById('stock').value='';document.getElementById('photo').value='';
+ document.getElementById('photoName').textContent='';document.getElementById('photoPreview').innerHTML='';selectedPhoto='';save();
+}
+function changeStock(id,delta){let x=items.find(a=>a.id==id);if(!x)return;x.stock=Math.max(0,(Number(x.stock)||0)+delta);save()}
+function toggle(id){let x=items.find(a=>a.id==id);if(x){x.checked=!x.checked;x.date=x.checked?today():'';save()}}
+function removeItem(id){if(confirm('این کالا حذف شود؟')){items=items.filter(x=>x.id!=id);save()}}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function render(){
+ let q=document.getElementById('search').value.trim().toLowerCase();
+ let visible=items.filter(x=>{
+   let text=(x.name+' '+x.brand+' '+x.code).toLowerCase();
+   let okSearch=!q||text.includes(q), done=x.checked&&x.date===today(), low=(Number(x.stock)||0)<=2;
+   return okSearch&&(filter==='all'||(filter==='checked'&&done)||(filter==='unchecked'&&!done)||(filter==='low'&&low));
+ });
+ let done=items.filter(x=>x.checked&&x.date===today()).length,low=items.filter(x=>(Number(x.stock)||0)<=2).length;
+ document.getElementById('total').textContent=items.length;document.getElementById('done').textContent=done;
+ document.getElementById('low').textContent=low;let pct=items.length?Math.round(done/items.length*100):0;
+ document.getElementById('percent').textContent=pct+'%';document.getElementById('fill').style.width=pct+'%';
+ let root=document.getElementById('list');root.innerHTML='';
+ const groups=[...cats,...[...new Set(items.map(x=>x.cat))].filter(c=>!cats.includes(c))];
+ groups.forEach(cat=>{
+   let a=visible.filter(x=>x.cat===cat);if(!a.length)return;
+   let h=document.createElement('div');h.className='cat';h.textContent=cat;root.appendChild(h);
+   a.forEach(x=>{
+    let d=document.createElement('div');d.className='item';
+    d.innerHTML=`<input type="checkbox" ${x.checked&&x.date===today()?'checked':''} onchange="toggle('${x.id}')">
+    ${x.photo?`<img class="photo" src="${esc(x.photo)}" onclick="viewPhoto('${x.id}')">`:`<div class="photoPlaceholder">📦</div>`}
+    <div style="flex:1"><b>${esc(x.name)}</b>
+    <div class="small">${x.brand?esc(x.brand)+' · ':''}${x.code?'بارکد: '+esc(x.code):''}${x.price?' · '+Number(x.price).toLocaleString('fa-IR')+' تومان':''}</div>
+    <div class="stock"><span class="small">موجودی</span><button onclick="changeStock('${x.id}',-1)">−</button><span class="stockNum">${Number(x.stock)||0}</span><button onclick="changeStock('${x.id}',1)">+</button></div></div>
+    <div class="actions"><button class="danger" onclick="removeItem('${x.id}')">🗑️</button></div>`;
+    root.appendChild(d);
+   });
+ });
+}
+function viewPhoto(id){const x=items.find(a=>a.id==id);if(x&&x.photo){const w=window.open();if(w)w.document.write('<title>'+esc(x.name)+'</title><img src="'+esc(x.photo)+'" style="max-width:100%;height:auto">')}}
+function parseCSV(text){
+ const lines=text.replace(/\r/g,'').split('\n').filter(Boolean);if(!lines.length)return [];
+ const parseLine=line=>{let out=[],cur='',q=false;for(let i=0;i<line.length;i++){let c=line[i];if(c==='"'&&line[i+1]==='"'){cur+='"';i++;continue}if(c==='"'){q=!q;continue}if(c===','&&!q){out.push(cur);cur=''}else cur+=c}out.push(cur);return out};
+ const headers=parseLine(lines[0]).map(x=>x.trim());
+ return lines.slice(1).map(line=>{let vals=parseLine(line),o={};headers.forEach((h,i)=>o[h]=vals[i]??'');return normalize(o)});
+}
+async function importFile(){
+ const f=document.getElementById('importFile').files[0];if(!f)return;const text=await f.text();let products;
+ try{if(f.name.toLowerCase().endsWith('.json')){let d=JSON.parse(text);products=Array.isArray(d)?d:(d.products||[])}else products=parseCSV(text);const r=mergeProducts(products);document.getElementById('syncStatus').textContent=`ورود فایل انجام شد: ${r.added} جدید، ${r.updated} به‌روزرسانی`;alert('ورود کالاها انجام شد')}catch(e){alert('فایل قابل خواندن نیست')}}
+function exportCSV(){
+ const headers=['نام کالا','برند','دسته‌بندی','بارکد','قیمت','موجودی','عکس'];
+ const rows=items.map(x=>[x.name,x.brand,x.cat,x.code,x.price,x.stock,x.photo]);
+ const csv=[headers,...rows].map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\n');
+ const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='shelf-man-products.csv';a.click();URL.revokeObjectURL(a.href)
+}
+async function scan(){
+ let el=document.getElementById('reader');el.classList.remove('hidden');
+ if(!window.Html5Qrcode)return alert('چند ثانیه صبر کن و دوباره اسکن را بزن');
+ let qr=new Html5Qrcode('reader');
+ try{await qr.start({facingMode:'environment'},{fps:10,qrbox:{width:280,height:160}},code=>{
+   let f=items.find(x=>x.code===code);
+   if(f){f.checked=true;f.date=today();save();alert('کالا پیدا شد: '+f.name)}
+   else{let n=prompt('بارکد جدید است. نام کالا را وارد کن:');if(n)add(n,catEl.value,code)}
+   qr.stop().then(()=>el.classList.add('hidden')).catch(()=>{})
+ })}catch(e){el.classList.add('hidden');alert('اجازه دوربین را بده و دوباره امتحان کن')}
+}
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+render();
+syncCatalog();
+</script>
+</body>
+</html>
